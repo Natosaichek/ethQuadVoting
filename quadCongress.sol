@@ -1,0 +1,4 @@
+contract QuadCongress {
+	function QuadCongress() {
+	}	
+}
