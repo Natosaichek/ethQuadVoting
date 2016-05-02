@@ -11,6 +11,7 @@ contract QuadToken {
 
     /* This generates a public event on the blockchain that will notify clients */
     event Transfer(address indexed from, address indexed to, uint256 value);
+	event ReportBalance(address indexed accountHolder, uint256 value);
 
     /* Initializes contract with initial supply tokens to the creator of the contract */
     function QuadToken(
@@ -27,7 +28,16 @@ contract QuadToken {
         decimals = decimalUnits;                            // Amount of decimals for display purposes
         version = versionOfTheCode;
     }
-
+	
+	function reportBalance (
+		address accountHolder
+	) 
+		returns (uint256 balance)
+	{
+		uint256 balance = balanceOf[accountHolder];
+		ReportBalance(accountHolder, balance);
+	}
+	
     /* Send coins */
     function transfer(address _to, uint256 _value) {
         if (balanceOf[msg.sender] < _value) throw;           // Check if the sender has enough
