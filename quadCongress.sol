@@ -5,6 +5,7 @@ contract QuadTokenSupply {
     string public version;
     uint8 public decimals;
     uint256 public totalSupply;
+	Congress public owningCongress;
 
     /* This creates an array with all balances */
     mapping (address => uint256) public balanceOf;
@@ -18,13 +19,15 @@ contract QuadTokenSupply {
         uint256 initialSupply,
         string tokenName,
         uint8 decimalUnits,
-        string tokenSymbol
+        string tokenSymbol,
+		Congress congress
         ) {
         balanceOf[msg.sender] = initialSupply;              // Give the creator all initial tokens
         totalSupply = initialSupply;                        // Update total supply
         name = tokenName;                                   // Set the name for display purposes
         symbol = tokenSymbol;                               // Set the symbol for display purposes ( QÍ ) ( QÍ  )
         decimals = decimalUnits;                            // Amount of decimals for display purposes
+		owningCongress = congress;							// the congress creating this tokensupply
     }
 		
     /* Send coins */
@@ -35,8 +38,18 @@ contract QuadTokenSupply {
         balanceOf[_to] += _value;                            // Add the same to the recipient
         Transfer(msg.sender, _to, _value);                   // Notify anyone listening that this transfer took place
     }
+	
+	function decrementBy(address account, uint256 value){
+		if (msg.sender != owningCongress) throw;
+		balanceOf[account] -= value;
+	}
 
+	function incrementBy(address account, uint256 value){
+		if (msg.sender != owningCongress) throw;
+		balanceOf[account] += value;
+	}
 
+	
     /* This unnamed function is called whenever someone tries to send ether to it */
     function () {
         throw;     // Prevents accidental sending of ether
@@ -87,7 +100,7 @@ contract Congress {
         uint8 decimalUnits,
         string tokenSymbol
 		) {
-		this.supply = QuadTokenSupply(initialSupply, tokenName, decimalUnits, tokenSymbol);
+		this.supply = QuadTokenSupply(initialSupply, tokenName, decimalUnits, tokenSymbol, this);
 	}
 
 
@@ -119,13 +132,16 @@ contract Congress {
 		if (supply.balanceOf(msg.sender) < voteStrength) throw;  // If they can't afford the vote, then abort.  TODO: somehow import knowlege of quadToken
 		if (p.voted[msg.sender] == true) throw;         // If has already voted, cancel
         p.voted[msg.sender] = true;                     // Set this voter as having voted
-        p.numberOfVotes++;                              // Increase the number of votes
-        if (inSupport) {                         // If they support the proposal
-			p.currentResult += sqrt(int[voteStrength]);  // Increase score TODO: handle fractional values
-        } else {                                        // If they don't
-            p.currentResult -= sqrt(int[voteStrength]);  // Decrease the score TODO: handle fractional values
+		supply.decrementBy(msg.sender, voteStrength);     // take the tokens out of the voters account
+        p.numberOfVotes++;                              // Increase the number of voters
+        if (inSupport) {                         			// If they support the proposal
+			p.currentResult += sqrt(int[voteStrength]);  	// Increase score TODO: handle fractional values
+        } else {                                        	// If they don't
+            p.currentResult -= sqrt(int[voteStrength]);  	// Decrease the score TODO: handle fractional values
         }
-        // Create a log of this event
+		Vote v = Vote(inSupport, voteStrength, msg.sender, justificationText);
+		p.votes.append(v);									// record all the vote details in the proposal
+        /* Create a log of this event */
         Voted(proposalNumber,  inSupport, msg.sender, justificationText, voteStrength);
     }
 
@@ -143,7 +159,22 @@ contract Congress {
             p.voteComplete = true;
             p.proposalPassed = false;
         }
+		// count up all the QuadTokens and voters for this proposal
+		uint totalQuads = 0;
+		for (int i = 0; i < p.votes.length; i++) {
+			totalQuads += p.votes[i].voteStrength;
+		}
+		uint256 redistributeAmount = totalQuads / p.votes.length;
+		// redistribute the tokens.
+		for (int i = 0; i < p.votes.length; i++) {
+			supply.incrementBy(p.votes[i].voter, redistributeAmount);
+		}
         // Fire Events
         ProposalTallied(proposalNumber, p.currentResult, p.numberOfVotes, p.proposalPassed);
+    }
+	
+	/* This unnamed function is called whenever someone tries to send ether to it */
+    function () {
+        throw;     // Prevents accidental sending of ether
     }
 }
