@@ -20,9 +20,10 @@ contract QuadTokenSupply {
         string tokenName,
         uint8 decimalUnits,
         string tokenSymbol,
-		Congress congress
+		Congress congress,
+		address initiator
         ) {
-        balanceOf[msg.sender] = initialSupply;              // Give the creator all initial tokens
+        balanceOf[initiator] = initialSupply;              // Give the creator all initial tokens
         totalSupply = initialSupply;                        // Update total supply
         name = tokenName;                                   // Set the name for display purposes
         symbol = tokenSymbol;                               // Set the symbol for display purposes ( QÍ ) ( QÍ  )
@@ -100,7 +101,7 @@ contract Congress {
         uint8 decimalUnits,
         string tokenSymbol
 		) {
-		this.supply = QuadTokenSupply(initialSupply, tokenName, decimalUnits, tokenSymbol, this);
+		this.supply = QuadTokenSupply(initialSupply, tokenName, decimalUnits, tokenSymbol, this, msg.sender);
 	}
 
 
