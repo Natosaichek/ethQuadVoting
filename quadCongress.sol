@@ -21,17 +21,17 @@ contract QuadTokenSupply {
         uint8 decimalUnits,
         string tokenSymbol,
         address initiator
-	) {
+    ) {
         balanceOf[initiator] = initialSupply;               // Give the creator all initial tokens
         totalSupply = initialSupply;                        // Update total supply
         name = tokenName;                                   // Set the name for display purposes
-        symbol = tokenSymbol;                               // Set the symbol for display purposes ( QÃÂ ) ( QÃÂ  )
+        symbol = tokenSymbol;                               // Set the symbol for display purposes ( QÃÂÃÂ ) ( QÃÂÃÂ  )
         decimals = decimalUnits;                            // Amount of decimals for display purposes
     }
-	
-	function bind(Congress congress) {
-		owningCongress = congress;
-	}
+    
+    function bind(Congress congress) {
+        owningCongress = congress;
+    }
         
     /* Send coins */
     function transfer(address _to, uint256 _value) {
@@ -43,12 +43,12 @@ contract QuadTokenSupply {
     }
     
     function decrementBy(address account, uint256 value){
-        if (msg.sender != owningCongress.getAddress()) throw;
+        //if (msg.sender != owningCongress.getAddress()) throw;
         balanceOf[account] -= value;
     }
 
     function incrementBy(address account, uint256 value){
-        if (msg.sender != owningCongress.getAddress()) throw;
+        //if (msg.sender != owningCongress.getAddress()) throw;
         balanceOf[account] += value;
     }
 
@@ -77,7 +77,7 @@ contract Congress {
     QuadTokenSupply public supply;
 
     event ProposalAdded(uint proposalID, string description);
-    event Voted(uint proposalID, bool position, address voter, string justification, uint256 voteStrength);
+    event Voted(uint proposalID, bool inSupport, address voter, string justification, uint256 voteStrength);
     event ProposalTallied(uint proposalID, int result, uint quorum, bool active);
 
     struct Proposal {
@@ -99,14 +99,14 @@ contract Congress {
 
     /* First time setup */
     function Congress(
-		QuadTokenSupply tokenSupply
+        address tokenSupply
         ) {
-        supply = tokenSupply;
-		supply.bind(this);
+		supply = QuadTokenSupply(tokenSupply);
+        supply.bind(this);
     }
 
-	function getAddress() returns (address) {return this;}
-	
+    function getAddress() returns (address) {return this;}
+    
     /* Function to create a new proposal */
     function newProposal(
         string description
@@ -128,9 +128,8 @@ contract Congress {
         uint proposalNumber,
         uint64 voteStrength,
         string justificationText
-    )
-        returns (uint voteID)
-    {
+	) returns (uint voteID)
+	{
         Proposal p = proposals[proposalNumber];         // Get the proposal
         if (supply.balanceOf(msg.sender) < voteStrength) throw;  // If they can't afford the vote, then abort.  TODO: somehow import knowlege of quadToken
         if (p.voted[msg.sender] == true) throw;         // If has already voted, cancel
@@ -142,8 +141,12 @@ contract Congress {
         } else {                                            // If they don't
             p.currentResult -= sqrt(voteStrength);     // Decrease the score TODO: handle fractional values
         }
-        var v = Vote(inSupport, voteStrength, msg.sender, justificationText);
-		p.votes[p.votes.length] = v;                                  // record all the vote details in the proposal
+		voteID = p.votes.length++;
+		Vote v = p.votes[voteID];
+        v.inSupport = inSupport;
+		v.voteStrength = voteStrength;
+		v.voter = msg.sender;
+		v.justification = justificationText;                                  // record all the vote details in the proposal
         /* Create a log of this event */
         Voted(proposalNumber,  inSupport, msg.sender, justificationText, voteStrength);
     }
@@ -170,7 +173,7 @@ contract Congress {
         uint256 redistributeAmount = totalQuads / p.votes.length;
         // redistribute the tokens.
         for (uint j = 0; j < p.votes.length; j++) {
-			address v = p.votes[j].voter;
+            address v = p.votes[j].voter;
             supply.incrementBy(v, redistributeAmount);
         }
         // Fire Events
